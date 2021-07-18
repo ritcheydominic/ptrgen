@@ -1,4 +1,5 @@
 import iptools
+import socket
 import sys
 
 def getIpv4ArpaDomainName(addr):
@@ -19,38 +20,62 @@ def getIpv6ArpaDomainName(addr):
         domainName += hex(nibbles[31 - i])[2:] + "."
     return domainName + "ip6.arpa."
 
-def generateIpv4PtrRecord(addr, ttl=""):
+def generateIpv4PtrRecord(addr, ttl="", hostname=""):
     if iptools.ipv4.validate_ip(addr):
         arpaDomainName = getIpv4ArpaDomainName(addr)
-        return "{} {} IN PTR {}".format(arpaDomainName, ttl, arpaDomainName)
+
+        if hostname == "":
+            return "{} {} IN PTR {}".format(arpaDomainName, ttl, arpaDomainName)
+        else:
+            return "{} {} IN PTR {}".format(arpaDomainName, ttl, hostname)
     else:
         sys.exit("Error: Invalid IP address/range encountered")
 
-def generateIpv6PtrRecord(addr, ttl=""):
+def generateIpv6PtrRecord(addr, ttl="", hostname=""):
     if iptools.ipv6.validate_ip(addr):
         arpaDomainName = getIpv6ArpaDomainName(addr)
-        return "{} {} IN PTR {}".format(arpaDomainName, ttl, arpaDomainName)
+
+        if hostname == "":
+            return "{} {} IN PTR {}".format(arpaDomainName, ttl, arpaDomainName)
+        else:
+            return "{} {} IN PTR {}".format(arpaDomainName, ttl, hostname)
     else:
         sys.exit("Error: Invalid IP address/range encountered")
 
-def printPtrRecords(range, ttl=""):
-    if iptools.ipv6.validate_cidr(range):
-        range = iptools.IpRangeList(range)
-        for addr in range:
+def getIpsFromHostname(host):
+    return { str(i[4][0]) for i in socket.getaddrinfo(host, 80) }
+
+def printPtrRecords(query, ttl=""):
+    if iptools.ipv6.validate_cidr(query) == True:
+        query = iptools.IpRangeList(query)
+        for addr in query:
             print(generateIpv6PtrRecord(addr, ttl))
-    elif iptools.ipv6.validate_ip(range):
-        print(generateIpv6PtrRecord(range, ttl))
-    elif iptools.ipv4.validate_cidr(range):
-        range = iptools.IpRangeList(range)
-        for addr in range:
+    elif iptools.ipv6.validate_ip(query) == True:
+        print(generateIpv6PtrRecord(query, ttl))
+    elif iptools.ipv4.validate_cidr(query) == True:
+        query = iptools.IpRangeList(query)
+        for addr in query:
             print(generateIpv4PtrRecord(addr, ttl))
-    elif iptools.ipv4.validate_ip(range):
-        print(generateIpv4PtrRecord(range, ttl))
+    elif iptools.ipv4.validate_ip(query) == True:
+        print(generateIpv4PtrRecord(query, ttl))
     else:
-        sys.exit("Error: Invalid IP address/range encountered")
+        try:
+            ips = getIpsFromHostname(query)
+            if not query.endswith("."):
+                query += "."
+
+            for ip in ips:
+                if iptools.ipv6.validate_ip(ip):
+                    print(generateIpv6PtrRecord(ip, ttl, hostname=query))
+                elif iptools.ipv4.validate_ip(ip):
+                    print(generateIpv4PtrRecord(ip, ttl, hostname=query))
+                else:
+                    sys.exit("Error: Invalid IP address/range encountered")
+        except:
+            sys.exit("Error: Invalid query")
 
 if len(sys.argv) < 2:
-    sys.exit("Error: Missing arguments")
+    sys.exit("Error: Too few arguments")
 elif len(sys.argv) == 2:
     printPtrRecords(sys.argv[1])
 elif len(sys.argv) == 3:
