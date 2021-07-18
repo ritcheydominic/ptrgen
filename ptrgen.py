@@ -29,7 +29,7 @@ def generateIpv4PtrRecord(addr, ttl="", hostname=""):
         else:
             return "{} {} IN PTR {}".format(arpaDomainName, ttl, hostname)
     else:
-        sys.exit("Error: Invalid IP address/range encountered")
+        sys.exit("Error: Invalid IPv4 address/range encountered ({})".format(addr))
 
 def generateIpv6PtrRecord(addr, ttl="", hostname=""):
     if iptools.ipv6.validate_ip(addr):
@@ -40,7 +40,7 @@ def generateIpv6PtrRecord(addr, ttl="", hostname=""):
         else:
             return "{} {} IN PTR {}".format(arpaDomainName, ttl, hostname)
     else:
-        sys.exit("Error: Invalid IP address/range encountered")
+        sys.exit("Error: Invalid IPv6 address/range encountered ({})".format(addr))
 
 def getIpsFromHostname(host):
     return { str(i[4][0]) for i in socket.getaddrinfo(host, 80) }
@@ -70,7 +70,7 @@ def printPtrRecords(query, ttl=""):
                 elif iptools.ipv4.validate_ip(ip):
                     print(generateIpv4PtrRecord(ip, ttl, hostname=query))
                 else:
-                    sys.exit("Error: Invalid IP address/range encountered")
+                    sys.exit("Error: Invalid IP address/range encountered ({})".format(ip))
         except:
             sys.exit("Error: Invalid query")
 
