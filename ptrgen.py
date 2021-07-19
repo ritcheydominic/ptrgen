@@ -6,7 +6,7 @@ def getIpv4ArpaDomainName(addr):
     addr = iptools.ipv4.ip2long(addr)
     bytes = [-1] * 4
     for i in range(len(bytes)):
-        bytes[i] = (int) (addr / (256 ** (3 - i))) % 256
+        bytes[i] = addr // (256 ** (3 - i)) % 256
     return "{}.{}.{}.{}.in-addr.arpa.".format(bytes[3], bytes[2], bytes[1], bytes[0])
 
 def getIpv6ArpaDomainName(addr):
