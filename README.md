@@ -1,2 +1,2 @@
 # ptrgen
- Generate PTR records for IP address ranges
+ Generate PTR records for IP addresses
