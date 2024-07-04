@@ -50,43 +50,58 @@ def generateIpv6PtrRecord(addr, zone="", ttl="", hostname=""):
 def getIpsFromHostname(host):
     return { str(i[4][0]) for i in socket.getaddrinfo(host, 80) }
 
-def printPtrRecords(query, ipv4_zone="", ipv6_zone="", ttl=""):
-    if iptools.ipv6.validate_cidr(query) == True:
-        query = iptools.IpRangeList(query)
-        for addr in query:
-            print(generateIpv6PtrRecord(addr, zone=ipv6_zone, ttl=ttl))
-    elif iptools.ipv6.validate_ip(query) == True:
-        print(generateIpv6PtrRecord(query, zone=ipv6_zone, ttl=ttl))
-    elif iptools.ipv4.validate_cidr(query) == True:
-        query = iptools.IpRangeList(query)
-        for addr in query:
-            print(generateIpv4PtrRecord(addr, zone=ipv4_zone, ttl=ttl))
-    elif iptools.ipv4.validate_ip(query) == True:
-        print(generateIpv4PtrRecord(query, zone=ipv4_zone, ttl=ttl))
-    else:
-        try:
-            ips = getIpsFromHostname(query)
-            if not query.endswith("."):
-                query += "."
-
-            for ip in ips:
-                if iptools.ipv6.validate_ip(ip):
-                    print(generateIpv6PtrRecord(ip, zone=ipv6_zone, ttl=ttl, hostname=query))
-                elif iptools.ipv4.validate_ip(ip):
-                    print(generateIpv4PtrRecord(ip, zone=ipv4_zone, ttl=ttl, hostname=query))
-                else:
-                    sys.exit("Error: Invalid IP address/range encountered ({})".format(ip))
-        except:
-            sys.exit("Error: Invalid query")
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate PTR records for IP addresses')
-    parser.add_argument('objects', metavar='O', type=str, nargs='+', help='IP address, subnet or domain name to create PTR record for')
-    parser.add_argument('-z4', type=str, nargs=1, default=[''], dest='ipv4_zone', help='DNS zone for IPv4 addresses')
-    parser.add_argument('-z6', type=str, nargs=1, default=[''], dest='ipv6_zone', help='DNS zone for IPv6 addresses')
+    parser.add_argument('objects', metavar='object', type=str, nargs='+', help='IP address, subnet or domain name to generate PTR record(s) for')
+    parser.add_argument('-z4', type=str, nargs=1, default=[''], dest='ipv4_zone', help='DNS zone for IPv4 addresses with trailing dot')
+    parser.add_argument('-z6', type=str, nargs=1, default=[''], dest='ipv6_zone', help='DNS zone for IPv6 addresses with trailing dot')
     parser.add_argument('-ttl', type=str, nargs=1, default=[''], dest='ttl', help='TTL value for PTR records')
+    parser.add_argument('-no4', action='store_true', dest='ignore_ipv4', help='ignore IPv4 addresses during record generation')
+    parser.add_argument('-no6', action='store_true', dest='ignore_ipv6', help='ignore IPv6 addresses during record generation')
 
     args = parser.parse_args()
 
     for obj in args.objects:
-        printPtrRecords(obj, ipv4_zone=args.ipv4_zone[0], ipv6_zone=args.ipv6_zone[0], ttl=args.ttl[0])
+        ipv4_zone=args.ipv4_zone[0]
+        ipv6_zone=args.ipv6_zone[0]
+        ttl=args.ttl[0]
+
+        if iptools.ipv6.validate_cidr(obj) == True:
+            if args.ignore_ipv6 == True:
+                continue
+            obj = iptools.IpRangeList(obj)
+            for addr in obj:
+                print(generateIpv6PtrRecord(addr, zone=ipv6_zone, ttl=ttl))
+        elif iptools.ipv6.validate_ip(obj) == True:
+            if args.ignore_ipv6 == True:
+                continue
+            print(generateIpv6PtrRecord(obj, zone=ipv6_zone, ttl=ttl))
+        elif iptools.ipv4.validate_cidr(obj) == True:
+            if args.ignore_ipv4 == True:
+                continue
+            obj = iptools.IpRangeList(obj)
+            for addr in obj:
+                print(generateIpv4PtrRecord(addr, zone=ipv4_zone, ttl=ttl))
+        elif iptools.ipv4.validate_ip(obj) == True:
+            if args.ignore_ipv4 == True:
+                continue
+            print(generateIpv4PtrRecord(obj, zone=ipv4_zone, ttl=ttl))
+        else:
+            try:
+                ips = getIpsFromHostname(obj)
+                if not obj.endswith("."):
+                    obj += "."
+
+                for ip in ips:
+                    if iptools.ipv6.validate_ip(ip):
+                        if args.ignore_ipv6 == True:
+                            continue
+                        print(generateIpv6PtrRecord(ip, zone=ipv6_zone, ttl=ttl, hostname=obj))
+                    elif iptools.ipv4.validate_ip(ip):
+                        if args.ignore_ipv4 == True:
+                            continue
+                        print(generateIpv4PtrRecord(ip, zone=ipv4_zone, ttl=ttl, hostname=obj))
+                    else:
+                        sys.exit("Error: Invalid IP address/range encountered ({})".format(ip))
+            except:
+                sys.exit("Error: Invalid query")
